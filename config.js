@@ -1,11 +1,11 @@
 // Supabase Configuration
 // Előbb be kell állítanod a saját Supabase URL-t és API kulcsot
-const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://qkvfmedgnnrnlgavzakv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdmZtZWRnbm5ybmxnYXZ6YWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDEyNTgsImV4cCI6MjA5NTgxNzI1OH0.HlEvZmAoG12W--5GLj43RjF602Zs445uRgAzy3iWSwQ';
 
 // Ha lokálisan tesztelted, kommenteld ki a fenti sorokat és használd ezt:
-// const SUPABASE_URL = 'http://localhost:54321';
-// const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+// const SUPABASE_URL = '';
+// const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdmZtZWRnbm5ybmxnYXZ6YWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDEyNTgsImV4cCI6MjA5NTgxNzI1OH0.HlEvZmAoG12W--5GLj43RjF602Zs445uRgAzy3iWSwQ';
 
 // Supabase client inicializálása
 const { createClient } = window.supabase;
