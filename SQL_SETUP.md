@@ -201,9 +201,9 @@ SELECT COUNT(*) as payment_count FROM public.payments;
 
 ---
 
-## 🔒 Biztonsági Beállítások (Optional de Ajánlott)
+## 🔒 Biztonsági Beállítások (Kötelező a demo apphoz)
 
-Ha szeretnéd, a bejelentkezéshez Row Level Security (RLS) politikákat állíthatsz be:
+Ez az alkalmazás a Supabase anon kulcsot használja a böngészőből, és nem használ Supabase Auth bejelentkezést. Ha RLS-t bekapcsolsz, akkor olyan policy-k kellenek, amelyek engedélyezik az olvasást és írást is a demo számára.
 
 ### Enable RLS on all tables
 
@@ -214,7 +214,7 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ```
 
-### Simple public read policy (development only)
+### Simple public read/write policy (development only)
 
 ```sql
 -- Allow everyone to read
@@ -223,11 +223,21 @@ CREATE POLICY "Enable read access for all users" ON public.menu_items FOR SELECT
 CREATE POLICY "Enable read access for all users" ON public.orders FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON public.payments FOR SELECT USING (true);
 
--- Allow authenticated users to insert/update/delete
-CREATE POLICY "Enable insert for authenticated users" ON public.tables FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable insert for authenticated users" ON public.menu_items FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable insert for authenticated users" ON public.orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable insert for authenticated users" ON public.payments FOR INSERT WITH CHECK (true);
+-- Allow everyone to insert/update/delete for the demo frontend
+CREATE POLICY "Enable insert for all users" ON public.tables FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable insert for all users" ON public.menu_items FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable insert for all users" ON public.orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable insert for all users" ON public.payments FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enable update for all users" ON public.tables FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.menu_items FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.orders FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.payments FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Enable delete for all users" ON public.tables FOR DELETE USING (true);
+CREATE POLICY "Enable delete for all users" ON public.menu_items FOR DELETE USING (true);
+CREATE POLICY "Enable delete for all users" ON public.orders FOR DELETE USING (true);
+CREATE POLICY "Enable delete for all users" ON public.payments FOR DELETE USING (true);
 ```
 
 ---

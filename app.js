@@ -10,6 +10,19 @@ let paymentMethod = null;
 let menuItems = [];
 let allTables = [];
 
+function getSupabaseErrorMessage(error, defaultMessage) {
+  if (!error) {
+    return defaultMessage;
+  }
+
+  const status = error.status || error.code;
+  if (status === 401 || status === 403) {
+    return 'Supabase jogosultsági hiba: futtasd le a SQL_SETUP.md RLS policy részt.';
+  }
+
+  return error.message || error.details || defaultMessage;
+}
+
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', async () => {
   await initializeDatabase();
@@ -22,24 +35,34 @@ async function initializeDatabase() {
     console.log('Initializing database...');
     
     // Check if tables exist
-    const { data: existingTables } = await supabase
+    const { error: tablesError } = await supabase
       .from('tables')
-      .select('count()', { count: 'exact' });
+      .select('*', { count: 'exact', head: true });
 
-    const { data: existingMenus } = await supabase
+    const { error: menusError } = await supabase
       .from('menu_items')
-      .select('count()', { count: 'exact' });
+      .select('*', { count: 'exact', head: true });
 
-    const { data: existingOrders } = await supabase
+    const { error: ordersError } = await supabase
       .from('orders')
-      .select('count()', { count: 'exact' });
+      .select('*', { count: 'exact', head: true });
 
-    const { data: existingPayments } = await supabase
+    const { error: paymentsError } = await supabase
       .from('payments')
-      .select('count()', { count: 'exact' });
+      .select('*', { count: 'exact', head: true });
+
+    if (tablesError || menusError || ordersError || paymentsError) {
+      throw tablesError || menusError || ordersError || paymentsError;
+    }
 
     console.log('Tables exist, database initialized');
   } catch (error) {
+    if (error?.status === 401 || error?.status === 403) {
+      console.error('Supabase jogosultsági hiba: ellenőrizd az RLS policy-kat.');
+      showNotification('Az adatbázis RLS beállításai hiányoznak. Futtasd le a SQL_SETUP.md policy részt.', 'error');
+      return;
+    }
+
     console.log('Tables might not exist yet. They will be created on first use.');
     // Tables will be created automatically when first insert is attempted
   }
@@ -173,7 +196,7 @@ async function loadTables() {
     renderTablesList();
   } catch (error) {
     console.error('Error loading tables:', error);
-    showNotification('Hiba az asztalok betöltésekor', 'error');
+    showNotification(getSupabaseErrorMessage(error, 'Hiba az asztalok betöltésekor'), 'error');
   }
 }
 
@@ -241,7 +264,7 @@ async function addTable() {
     loadTables();
   } catch (error) {
     console.error('Error adding table:', error);
-    showNotification('Hiba az asztal hozzáadásakor', 'error');
+    showNotification(getSupabaseErrorMessage(error, 'Hiba az asztal hozzáadásakor'), 'error');
   }
 }
 
@@ -261,7 +284,7 @@ async function deleteTable(tableId) {
     loadTables();
   } catch (error) {
     console.error('Error deleting table:', error);
-    showNotification('Hiba az asztal törlésénél', 'error');
+    showNotification(getSupabaseErrorMessage(error, 'Hiba az asztal törlésénél'), 'error');
   }
 }
 
