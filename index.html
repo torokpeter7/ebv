@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBV - Asztalos Fizetési Rendszer</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- ========================
+     ADMIN DASHBOARD
+     ======================== -->
+<div id="adminSection" class="hidden">
+  <header>
+    <h1>🏪 EBV - Admin Panel</h1>
+    <div class="header-right">
+      <span class="status-indicator"></span>
+      <button class="btn btn-secondary btn-small" onclick="showGuestView()">Vendég Nézet</button>
+      <button class="btn btn-danger btn-small" onclick="logout()">Kijelentkezés</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- STATS SECTION -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Foglalt Asztalok</div>
+        <div class="stat-value" id="occupiedCount">0</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Szabad Asztalok</div>
+        <div class="stat-value" id="availableCount">0</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">Fizető Asztalok</div>
+        <div class="stat-value" id="payingCount">0</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Mai Bevétel</div>
+        <div class="stat-value" id="totalRevenue">0 Ft</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border);">
+      <button class="btn btn-secondary" style="border: none; border-bottom: 3px solid var(--primary);" onclick="switchAdminTab('tables')">Asztalok</button>
+      <button class="btn btn-secondary" style="border: none;" onclick="switchAdminTab('menu')">Menü Kezelés</button>
+      <button class="btn btn-secondary" style="border: none;" onclick="switchAdminTab('payments')">Fizetések</button>
+    </div>
+
+    <!-- TABLES TAB -->
+    <div id="tablesTab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>🪑 Asztalkezelés</h2>
+          <button class="btn btn-primary" onclick="openAddTableModal()">+ Új Asztal</button>
+        </div>
+        <div id="tablesList" class="tables-list"></div>
+      </div>
+    </div>
+
+    <!-- MENU TAB -->
+    <div id="menuTab" class="tab-content hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>🍽️ Menü Kezelés</h2>
+          <button class="btn btn-primary" onclick="openAddMenuItemModal()">+ Új Tétel</button>
+        </div>
+        <div id="menuList" class="menu-grid"></div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS TAB -->
+    <div id="paymentsTab" class="tab-content hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>💳 Fizetések</h2>
+        </div>
+        <div id="paymentsList" class="tables-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     GUEST VIEW (Customer Payment)
+     ======================== -->
+<div id="guestSection" class="hidden">
+  <header>
+    <h1>🍽️ Fizetés</h1>
+    <div class="header-right">
+      <button class="btn btn-secondary btn-small" onclick="showAdminView()">Admin</button>
+    </div>
+  </header>
+
+  <div class="container payment-screen">
+    <!-- QR SCANNER SECTION -->
+    <div id="qrScannerSection" class="card">
+      <div class="card-header">
+        <h2>QR-kód Beolvasása</h2>
+      </div>
+      <p style="text-align: center; color: var(--gray); margin: 2rem 0;">
+        📱 Olvasd be az asztalon lévő QR-kódot
+      </p>
+      <div style="text-align: center; margin: 2rem 0;">
+        <input 
+          type="text" 
+          id="qrInput" 
+          placeholder="QR-kód vagy asztal ID..."
+          style="font-size: 1.2rem; padding: 1rem; width: 100%; max-width: 300px;"
+          onkeypress="if(event.key==='Enter') loadTableOrder()"
+        >
+      </div>
+      <div style="text-align: center;">
+        <button class="btn btn-primary" onclick="loadTableOrder()">Asztal Megnyitása</button>
+      </div>
+    </div>
+
+    <!-- ORDER DISPLAY SECTION -->
+    <div id="orderSection" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>📋 <span id="guestTableNumber">Asztal</span> - Rendelés</h2>
+          <button class="btn btn-secondary btn-small" onclick="backToQRScanner()">Vissza</button>
+        </div>
+
+        <div id="guestMenuItems" class="menu-grid"></div>
+
+        <div class="order-summary" id="guestOrderSummary">
+          <h3>Rendelés Összesen</h3>
+          <div id="guestOrderItems"></div>
+          <div class="order-total">
+            <span>Össz:</span>
+            <span class="order-total-amount" id="guestTotalAmount">0 Ft</span>
+          </div>
+          <button class="btn btn-success" style="width: 100%; margin-top: 1.5rem;" onclick="goToPayment()">
+            Fizetés
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT SECTION -->
+    <div id="paymentSection" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>💳 Fizetési Módszer</h2>
+        </div>
+
+        <div style="margin: 2rem 0;">
+          <div class="payment-method" onclick="selectPaymentMethod('card', this)">
+            <h3>💳 Bankkártya</h3>
+            <p>Visa, Mastercard, American Express</p>
+          </div>
+
+          <div class="payment-method" onclick="selectPaymentMethod('cash', this)">
+            <h3>💰 Készpénz</h3>
+            <p>Fizétés az asztalnál</p>
+          </div>
+        </div>
+
+        <div style="background: var(--gray-lighter); padding: 2rem; border-radius: var(--radius-lg); text-align: center; margin: 2rem 0;">
+          <div style="font-size: 0.875rem; color: var(--gray); margin-bottom: 0.5rem;">Fizetendő összeg</div>
+          <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);" id="paymentAmount">0 Ft</div>
+        </div>
+
+        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--border); margin: 2rem 0;">
+          <div style="margin-bottom: 1.5rem;">
+            <label class="form-group" style="margin: 0;">
+              <input type="text" placeholder="Név" id="customerName" style="width: 100%; padding: 0.75rem;">
+            </label>
+          </div>
+          <div style="margin-bottom: 1.5rem;">
+            <label class="form-group" style="margin: 0;">
+              <input type="email" placeholder="E-mail" id="customerEmail" style="width: 100%; padding: 0.75rem;">
+            </label>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn btn-secondary" style="flex: 1;" onclick="backToOrder()">Vissza</button>
+          <button class="btn btn-success" style="flex: 1;" id="confirmPaymentBtn" onclick="confirmPayment()">Fizetés Megerősítése</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCCESS SECTION -->
+    <div id="successSection" class="hidden">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 4rem; margin: 2rem 0;">✅</div>
+        <h2 style="color: var(--success); margin-bottom: 1rem;">Fizetés Sikeres!</h2>
+        <p style="font-size: 1.1rem; color: var(--gray); margin-bottom: 2rem;">
+          Köszönjük, hogy nálunk ebédeltél/italtál!
+        </p>
+        <div style="background: var(--gray-lighter); padding: 1.5rem; border-radius: var(--radius-lg); margin: 2rem 0;">
+          <div style="color: var(--gray); margin-bottom: 0.5rem;">Számlaszám:</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: var(--dark);" id="receiptNumber">#00000</div>
+          <div style="color: var(--gray); margin-top: 1rem; margin-bottom: 0.5rem;">Összesen:</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);" id="receiptAmount">0 Ft</div>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="backToQRScanner()">
+          ← Vissza a Kezdethez
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     LOGIN SECTION
+     ======================== -->
+<div id="loginSection">
+  <header>
+    <h1>🏪 EBV - Asztalos Fizetési Rendszer</h1>
+  </header>
+
+  <div class="container" style="max-width: 400px; margin-top: 4rem;">
+    <div class="card">
+      <h2 style="text-align: center; margin-bottom: 2rem;">Bejelentkezés</h2>
+      
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="admin@example.com" value="admin@example.com">
+      </div>
+
+      <div class="form-group">
+        <label>Jelszó</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" value="password123">
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%;" onclick="login()">Bejelentkezés</button>
+
+      <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border); text-align: center; color: var(--gray);">
+        <p style="margin: 0 0 1rem 0; font-size: 0.875rem;">Teszteléshez használd a fenti adatokat</p>
+        <button class="btn btn-secondary btn-small" onclick="showGuestView()" style="width: 100%;">
+          Vendég Fizetési Nézet
+        </button>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem; color: var(--gray); font-size: 0.875rem;">
+      <p>💡 <strong>Beállítás szükséges:</strong></p>
+      <p>1. Nyisd meg a <code>config.js</code> fájlt</p>
+      <p>2. Írj be a Supabase URL-t és API kulcsot</p>
+      <p>3. Futtasd le az SQL parancsokat a Supabase SQL Editorban</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     MODALS
+     ======================== -->
+
+<!-- Add Table Modal -->
+<div id="addTableModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Új Asztal Hozzáadása</h2>
+      <button class="modal-close" onclick="closeModal('addTableModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Asztal száma</label>
+      <input type="number" id="tableNumber" placeholder="pl. 1, 2, 3..." min="1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('addTableModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="addTable()">Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Menu Item Modal -->
+<div id="addMenuItemModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Új Menüpont Hozzáadása</h2>
+      <button class="modal-close" onclick="closeModal('addMenuItemModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Étel/Ital neve</label>
+      <input type="text" id="menuName" placeholder="pl. Caesars Saláta">
+    </div>
+    <div class="form-group">
+      <label>Leírás</label>
+      <textarea id="menuDescription" placeholder="pl. Friss saláta bacon és parmezán sajttal" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Kategória</label>
+      <select id="menuCategory">
+        <option value="appetizer">Előétel</option>
+        <option value="main">Főétel</option>
+        <option value="dessert">Dessert</option>
+        <option value="beverage" selected>Ital</option>
+        <option value="other">Egyéb</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Ár (Ft)</label>
+      <input type="number" id="menuPrice" placeholder="pl. 2500" min="0" step="50">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('addMenuItemModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="addMenuItem()">Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR Code Display Modal -->
+<div id="qrCodeModal" class="modal">
+  <div class="modal-content" style="text-align: center;">
+    <div class="modal-header">
+      <h2>QR-kód - Asztal <span id="qrTableNumber">0</span></h2>
+      <button class="modal-close" onclick="closeModal('qrCodeModal')">✕</button>
+    </div>
+    <p style="color: var(--gray); margin-bottom: 1.5rem;">
+      Nyomtasd ki vagy mutatd meg a képernyőről a vendégeknek
+    </p>
+    <div id="qrCodeContainer" style="display: flex; justify-content: center; margin: 2rem 0;">
+      <!-- QR Code will be generated here -->
+    </div>
+    <input 
+      type="hidden" 
+      id="qrCodeValue" 
+      value=""
+    >
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('qrCodeModal')">Bezárás</button>
+      <button class="btn btn-primary" onclick="printQRCode()">Nyomtatás</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
